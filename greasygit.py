@@ -65,7 +65,11 @@ class GreasyForkScript:
             url_suffix = ""
 
         # The version page loses the query param after redirection, so just use its full URL.
-        d = get(self.URL_HISTORY.format(id=self.id, simple_name=self.simple_name, suffix=url_suffix))
+        d = get(
+            self.URL_HISTORY.format(
+                id=self.id, simple_name=self.simple_name, suffix=url_suffix
+            )
+        )
 
         for version in re.finditer(
             self.REGEX_HISTORY.format(id=self.id), d, re.VERBOSE
@@ -116,7 +120,7 @@ class GitRepo:
         execute_command(command, cwd=self.path, env=envs)
 
     def tag(self, name, message=None, annotated=False):
-        command = f"git tag {name}" 
+        command = f"git tag {name}"
         if message:
             command += f" -m {shlex.quote(message)}"
         if annotated:
