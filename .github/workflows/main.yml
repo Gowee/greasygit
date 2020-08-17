@@ -1,0 +1,15 @@
+name: CI
+
+on: [push]
+
+jobs:
+  black:
+    name: black
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: "Black check"
+      uses: lgeiger/black-action@v1.0.1
+      with:
+        args: . --check
