@@ -9,7 +9,7 @@ import shlex
 
 
 def get(url, data=None):
-    with urlopen(url, None) as r:
+    with urlopen(url, data) as r:
         return r.read().decode("utf-8")
 
 
@@ -29,7 +29,7 @@ class GreasyForkScript:
 
     URL_BASE = "https://greasyfork.org"
     URL_SCRIPT_HOMEPAGE = URL_BASE + "/en/scripts/{id}"
-    URL_HISTORY = URL_BASE + "/en/scripts/{id}/versions{suffix}"
+    URL_HISTORY = URL_BASE + "/en/scripts/{id}-{simple_name}/versions{suffix}"
     URL_CODE = URL_BASE + "/scripts/{id}/code/code.js?version={version}"
     REGEX_METADATA = r"<header>\s*<h2>(?P<name>[^<\n]+)</h2>\s*<p id=\"script-description\">(?P<description>[^<\n]+)</p>"
     REGEX_LINK_CANONICAL = r'<link rel="canonical" href="(?P<url>[^\"]+)">'
@@ -40,7 +40,7 @@ class GreasyForkScript:
             </a>\s+<time\ 
             datetime=\"(?P<datetime>[^\"]+) # datetime
             \"[^\n]+\s+
-            -\ (?P<message>.+) # message
+            (-\ (?P<message>.+))? # message
         \s+</li>
     """
 
@@ -58,15 +58,19 @@ class GreasyForkScript:
         canon_url = re.search(self.REGEX_LINK_CANONICAL, d).group("url")
         self.simple_name = unquote(canon_url.split("/")[-1].lstrip(str(self.id) + "-"))
 
-    def get_versions(self, all_versions=False):
+    def get_versions(self, including_all_versions=False):
         # if self._versions:
         #     return self._versions
 
-        if all_versions:
+        if including_all_versions:
             url_suffix = "?show_all_versions=1"
         else:
             url_suffix = ""
-        d = get(self.URL_HISTORY.format(id=self.id, suffix=url_suffix))
+        # print(self.URL_HISTORY.format(id=self.id, suffix=url_suffix))
+        # The version page loses the query param after redirection, so just use its full URL.
+        d = get(self.URL_HISTORY.format(id=self.id, simple_name=self.simple_name, suffix=url_suffix))
+        # with open("/tmp/sdadsd.html", "w") as f:
+        #     f.write(d)
         for version in re.finditer(
             self.REGEX_HISTORY.format(id=self.id), d, re.VERBOSE
         ):
@@ -110,36 +114,42 @@ class GitRepo:
         if datetime:
             envs = os.environ.copy()
             envs.update({"GIT_AUTHOR_DATE": datetime, "GIT_COMMITTER_DATE": datetime})
-        command = f"git commit -m {shlex.quote(message)}"
+        command = f"git commit -m {shlex.quote(message)} --allow-empty-message"
         if allowing_empty:
             command += " --allow-empty"
         execute_command(command, cwd=self.path, env=envs)
 
     def tag(self, name, message=None, annotated=False):
-        command = f"git tag {name}"
+        print("TAG", name)
+        command = f"git tag {name}" 
         if message:
             command += f" -m {shlex.quote(message)}"
         if annotated:
             command += " -a"
+        execute_command(command, cwd=self.path)
 
 
 def main():
     script_id = int(input("❓ Script ID: ").strip())
-    all_versions = (
+    including_all_versions = (
         input("❓ Include versions where code are not changed (Y/n): ").lower() != "n"
     )
-    tagging = input("❓ Tag commits of every version ([Y/n): ").lower() != "n"
+    tagging = input("❓ Tag commits of every version (Y/n): ").lower() != "n"
     # tagging_first = input("❓  (F/l): ").lower() != "n"
 
     print("📥 Fetching metadata...")
     gfscript = GreasyForkScript(script_id)
-    print("ℹ️ Name:", gfscript.name)
+    print("\nℹ️ Name:", gfscript.name)
     print("ℹ️ Description:", gfscript.description)
 
     repo_name = (
-        input(f"❓ Repo name [{gfscript.simple_name}]: ").strip() or gfscript.simple_name
+        input(f"\n❓ Repo name [{gfscript.simple_name}]: ").strip()
+        or gfscript.simple_name
     )
-    script_file_name = input(f"❓ Script file name [{repo_name}]: ").strip() or repo_name
+
+    script_file_name = input(f"❓ Script file name [{repo_name}.js]: ").strip() or (
+        repo_name + ".js"
+    )
 
     print("\n⚙️ Initializing git repo...")
 
@@ -148,13 +158,25 @@ def main():
     git.update_and_add("README.md", README_TEMPLATE.format(**vars(gfscript)))
     git.commit("Init with greasygit")
 
-    for version in reversed(list(gfscript.get_versions())):
-        print(f"\n⚙️ Processing {version.tag} ({version.number})...")
+    versions = reversed(list(gfscript.get_versions(including_all_versions)))
+    versions = list(versions)
+    # input(len(versions))
+    last_tag = None
+    for idx, version in enumerate(versions):
+        print(
+            f"\n⚙️ Processing {version.tag} ({version.number}) at {version.datetime}..."
+        )
         code = gfscript.get_code(version.number)
         git.update_and_add(script_file_name, code)
-        git.commit(version.message, version.datetime, all_versions)
+        git.commit(version.message, version.datetime, including_all_versions)
         if tagging:
-            git.tag(version.tag)
+            if version.tag != last_tag:
+                print("tag!", version.tag, last_tag)
+                git.tag(version.tag)
+            last_tag = version.tag
+
+    print(f"\n✔️ Done with 1 + {idx + 1} commits.")
+    print("ℹ️ Now cd, add a remote and push commits.")
 
 
 if __name__ == "__main__":
