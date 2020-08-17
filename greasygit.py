@@ -59,18 +59,14 @@ class GreasyForkScript:
         self.simple_name = unquote(canon_url.split("/")[-1].lstrip(str(self.id) + "-"))
 
     def get_versions(self, including_all_versions=False):
-        # if self._versions:
-        #     return self._versions
-
         if including_all_versions:
             url_suffix = "?show_all_versions=1"
         else:
             url_suffix = ""
-        # print(self.URL_HISTORY.format(id=self.id, suffix=url_suffix))
+
         # The version page loses the query param after redirection, so just use its full URL.
         d = get(self.URL_HISTORY.format(id=self.id, simple_name=self.simple_name, suffix=url_suffix))
-        # with open("/tmp/sdadsd.html", "w") as f:
-        #     f.write(d)
+
         for version in re.finditer(
             self.REGEX_HISTORY.format(id=self.id), d, re.VERBOSE
         ):
@@ -120,7 +116,6 @@ class GitRepo:
         execute_command(command, cwd=self.path, env=envs)
 
     def tag(self, name, message=None, annotated=False):
-        print("TAG", name)
         command = f"git tag {name}" 
         if message:
             command += f" -m {shlex.quote(message)}"
@@ -135,7 +130,6 @@ def main():
         input("❓ Include versions where code are not changed (Y/n): ").lower() != "n"
     )
     tagging = input("❓ Tag commits of every version (Y/n): ").lower() != "n"
-    # tagging_first = input("❓  (F/l): ").lower() != "n"
 
     print("📥 Fetching metadata...")
     gfscript = GreasyForkScript(script_id)
@@ -160,7 +154,6 @@ def main():
 
     versions = reversed(list(gfscript.get_versions(including_all_versions)))
     versions = list(versions)
-    # input(len(versions))
     last_tag = None
     for idx, version in enumerate(versions):
         print(
@@ -171,7 +164,6 @@ def main():
         git.commit(version.message, version.datetime, including_all_versions)
         if tagging:
             if version.tag != last_tag:
-                print("tag!", version.tag, last_tag)
                 git.tag(version.tag)
             last_tag = version.tag
 
