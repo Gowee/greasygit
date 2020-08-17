@@ -145,8 +145,8 @@ def main():
         or gfscript.simple_name
     )
 
-    script_file_name = input(f"❓ Script file name [{repo_name}.js]: ").strip() or (
-        repo_name + ".js"
+    script_file_name = input(f"❓ Script file name [{repo_name}.user.js]: ").strip() or (
+        repo_name + ".user.js"
     )
 
     print("\n⚙️ Initializing git repo...")
