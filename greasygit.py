@@ -13,20 +13,6 @@ def get(url, data=None):
         return r.read().decode("utf-8")
 
 
-SHELL_SCRIPT = """\
-#!/bin/sh
-set -eux
-REPO={repo_name}
-git init $REPO
-cd $REPO
-touch README.md
-{body}
-echo ""
-echo "Then:" 
-echo "$ git remote add origin REPO_URL"
-echo "git push -u origin master"
-"""
-
 README_TEMPLATE = """\
 # {name}
 {description}
@@ -71,21 +57,11 @@ class GreasyForkScript:
         self.description = match.group("description")
         canon_url = re.search(self.REGEX_LINK_CANONICAL, d).group("url")
         self.simple_name = unquote(canon_url.split("/")[-1].lstrip(str(self.id) + "-"))
-        # print(self.name, self.simple_name, self.description)
 
-    # @property
-    # def name(self):
-    #     pass
-
-    # @property
-    # def simple_name(self):
-    #     pass
-
-    # @property
     def get_versions(self, all_versions=False):
         # if self._versions:
         #     return self._versions
-        
+
         if all_versions:
             url_suffix = "?show_all_versions=1"
         else:
@@ -134,26 +110,27 @@ class GitRepo:
         if datetime:
             envs = os.environ.copy()
             envs.update({"GIT_AUTHOR_DATE": datetime, "GIT_COMMITTER_DATE": datetime})
-        command = f'git commit -m {shlex.quote(message)}'
+        command = f"git commit -m {shlex.quote(message)}"
         if allowing_empty:
             command += " --allow-empty"
         execute_command(command, cwd=self.path, env=envs)
-    
+
     def tag(self, name, message=None, annotated=False):
-        command = f'git tag {name}'
+        command = f"git tag {name}"
         if message:
-            command +=  f' -m {shlex.quote(message)}'
+            command += f" -m {shlex.quote(message)}"
         if annotated:
             command += " -a"
 
 
 def main():
     script_id = int(input("❓ Script ID: ").strip())
-    all_versions = input("❓ Include versions where code are not changed (Y/n): ").lower() != "n"
-    # print(allowing_empty)
+    all_versions = (
+        input("❓ Include versions where code are not changed (Y/n): ").lower() != "n"
+    )
     tagging = input("❓ Tag commits of every version ([Y/n): ").lower() != "n"
     # tagging_first = input("❓  (F/l): ").lower() != "n"
-    
+
     print("📥 Fetching metadata...")
     gfscript = GreasyForkScript(script_id)
     print("ℹ️ Name:", gfscript.name)
@@ -163,7 +140,7 @@ def main():
         input(f"❓ Repo name [{gfscript.simple_name}]: ").strip() or gfscript.simple_name
     )
     script_file_name = input(f"❓ Script file name [{repo_name}]: ").strip() or repo_name
-    
+
     print("\n⚙️ Initializing git repo...")
 
     git = GitRepo(repo_name)
@@ -171,26 +148,13 @@ def main():
     git.update_and_add("README.md", README_TEMPLATE.format(**vars(gfscript)))
     git.commit("Init with greasygit")
 
-    # write_file(f"{repo_name}/README.md", )
-    # execute_command(f"git add ${repo_name}/README.md")
-    # execute_command('git commit -m "Init with greasygit"')
-
-    # script_file = f"{repo_name}/{gfscript.simple_name}"
-
     for version in reversed(list(gfscript.get_versions())):
         print(f"\n⚙️ Processing {version.tag} ({version.number})...")
         code = gfscript.get_code(version.number)
-        # write_file(script_file_name, code)
         git.update_and_add(script_file_name, code)
         git.commit(version.message, version.datetime, all_versions)
         if tagging:
             git.tag(version.tag)
-        # execute_command(f"")
-        # commands.append(
-
-        #     f'GIT_AUTHOR_DATE={version.datetime} GIT_COMMITTER_DATE={version.datetime}'
-        #     f'git commit {" --allow-empty" if allowing_empty else ""} -m "{version.message}"'
-        # )
 
 
 if __name__ == "__main__":
