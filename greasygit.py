@@ -17,7 +17,7 @@ README_TEMPLATE = """\
 # {name}
 {description}
 
-[Migrated from GreasyFork](https://greasyfork.org/scripts/{id}) 
+[Migrated from GreasyFork](https://greasyfork.org/scripts/{id})
 with the help of [greasygit](https://github.com/Gowee/greasygit).
 """
 
@@ -37,14 +37,12 @@ class GreasyForkScript:
         <li>\s+<input[^\n]+\s+<input[^\n]+\s+ # leading unused content in <li>
             <a[^>]*\ href=\"/en/scripts/{id}[\w\-%+]+\?
             version=(?P<number>\d+)\">(?P<tag>[^<\"]+) # version number
-            </a>\s+<time\ 
+            </a>\s+<time\
             datetime=\"(?P<datetime>[^\"]+) # datetime
             \"[^\n]+\s+
             (-\ (?P<message>.+))? # message
         \s+</li>
     """
-
-    _versions = None
 
     def __init__(self, id: int):
         self.id = id
