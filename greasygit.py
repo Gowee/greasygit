@@ -31,16 +31,16 @@ class GreasyForkScript:
     URL_SCRIPT_HOMEPAGE = URL_BASE + "/en/scripts/{id}"
     URL_HISTORY = URL_BASE + "/en/scripts/{id}-{simple_name}/versions{suffix}"
     URL_CODE = URL_BASE + "/scripts/{id}/code/code.js?version={version}"
-    REGEX_METADATA = r"<header>\s*<h2>(?P<name>[^<\n]+)</h2>\s*<p id=\"script-description\">(?P<description>[^<\n]+)</p>"
+    REGEX_METADATA = r"<header>\s*<h2>(?P<name>[^<\n]+)</h2>\s*<p id=\"script-description\"[^>]*>(?P<description>[^<\n]+)</p>"
     REGEX_LINK_CANONICAL = r'<link rel="canonical" href="(?P<url>[^\"]+)">'
     REGEX_HISTORY = r"""
-        <li>\s+<input[^\n]+\s+<input[^\n]+\s+ # leading unused content in <li>
+        <li>.+?version-number.+? # leading unused content in <li>
             <a[^>]*\ href=\"/en/scripts/{id}[\w\-%+]+\?
-            version=(?P<number>\d+)\">(?P<tag>[^<\"]+) # version number
-            </a>\s+<time\
-            datetime=\"(?P<datetime>[^\"]+) # datetime
-            \"[^\n]+\s+
-            (-\ (?P<message>.+))? # message
+            version=(?P<number>\d+)\">(?P<tag>[^<\"]+)</a> # version number
+            .+?datetime=\"(?P<datetime>[^\"]+) # datetime
+            \".+?
+            (version-changelog\">\s*
+            (?P<message>[^<]+)\s*</\w+>)? # message
         \s+</li>
     """
 
@@ -70,7 +70,7 @@ class GreasyForkScript:
         )
 
         for version in re.finditer(
-            self.REGEX_HISTORY.format(id=self.id), d, re.VERBOSE
+            self.REGEX_HISTORY.format(id=self.id), d, re.VERBOSE | re.DOTALL
         ):
             yield Version(
                 version.group("number"),
