@@ -1,3 +1,8 @@
+# NO LONGER MAINTAINED
+You are welcomed to start a new project by forking.
+
+Tips: The current implementation depends on RegExp to parse HTML which breaks often when greasygit updates their website, even slightly in styles. It would be better to switch to a HTML/XML(e.g. lxml) parser, while introducing a external dep troubles distribution of thescript.
+
 # greasygit
 greasygit helps migrate a script published on Greasy Fork to Git with history (commits) kept intact.  
 
